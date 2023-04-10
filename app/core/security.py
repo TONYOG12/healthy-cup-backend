@@ -1,13 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 
 import jwt
 from flask import request
-from flask_bcrypt import Bcrypt  # type:ignore
+from flask_bcrypt import Bcrypt
 
-from app.core.config import config
+from app.core.settings import settings
 from app.utilities.errors import InvalidTokenError, MissingTokenError
-from app.utilities.utils import error_response
+from app.utilities.reponses import error_response
 
 
 class Security:
@@ -20,20 +20,26 @@ class Security:
     def verify_password(self, hashed_password: str, password: str) -> bool:
         """Returns `True` if `password` hashes to `hashed_password`."""
         return self.bcrypt.check_password_hash(hashed_password, password)
-
-    def create_token(self, user):
+    
+    '''
+    def create_token(self, user_id):
         """Creates a JWT token with the `id` of the `user`."""
         token = jwt.encode(
             payload={
-                "subject": user.id,
-                "expire_at": (datetime.utcnow() + timedelta(minutes=30)).ctime(),
+                "sub": user_id,
+                "exp": (
+                    datetime.utcnow()
+                    + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+                ).timestamp(),
             },
-            key=config["SECRET_KEY"],  # type: ignore
+            key=settings.JWT_SECRET_KEY,  # type: ignore
             algorithm="HS256",
         )
 
         return token
 
+    '''
+    
     def verify_token(self):
         """Returns the decoded token in the request header (if valid)."""
         token = None
@@ -45,7 +51,7 @@ class Security:
             )
 
         try:
-            key = config.get("SECRET_KEY")
+            key = settings.SECRET_KEY
             decoded_token = jwt.decode(
                 token, key=key if key else "", algorithms=["HS256"]
             )
@@ -57,3 +63,5 @@ class Security:
 
 
 security = Security()
+
+
